@@ -1,6 +1,7 @@
-from pyamaze import maze, COLOR, agent
+from pyamaze import maze, COLOR, agent,textLabel
 import random
 from queue import PriorityQueue
+import time
 
 # Manhattan Distance Heuristic Function
 def h(cell, goal):
@@ -18,9 +19,11 @@ def aStar(m, start, goal):
     open = PriorityQueue()
     open.put((f_score[start], start))
     aPath = {}
+    visited_nodes = []
 
     while not open.empty():
         currCell = open.get()[1]
+        visited_nodes.append(currCell)
 
         if currCell == goal:
             break
@@ -56,30 +59,50 @@ def aStar(m, start, goal):
         cell = aPath.get(cell)
     path.append(start)
     path.reverse()  # Reversed to start from the start point
+    
+    optimal_path_length = len(path)
+    visited_nodes_count = len(visited_nodes)
+    efficiency = optimal_path_length / visited_nodes_count if visited_nodes_count else 0
 
-    return path
+    return path, visited_nodes, g_score[goal], efficiency
 
 # Function to generate the maze
 def generate_maze(size):
-
-    # Randomize start and goal positions
-    start = (random.randint(1, size), random.randint(1, size))
-    goal = (random.randint(1, size), random.randint(1, size))
-
-    # Ensure start and goal points are different
-    while start == goal:
-        goal = (random.randint(1, size), random.randint(1, size))
+    used_positions = set()
 
     for i in range(3):  # Generate and solve 3 mazes
-        m = maze(size, size)
+        start = (random.randint(1, size), random.randint(1, size))
+        while start in used_positions:
+            start = (random.randint(1, size), random.randint(1, size))
+        used_positions.add(start)
 
-        m.CreateMaze(goal[0], goal[1], loopPercent=5)
-        path = aStar(m, start, goal)
-        print("Path found by A*: ", path)
+        goal = (random.randint(1, size), random.randint(1, size))
+        while goal in used_positions or goal == start:
+            goal = (random.randint(1, size), random.randint(1, size))
+        used_positions.add(goal)
         
-        player_agent = agent(m, x=start[0], y=start[1], color=COLOR.red, filled=True, footprints=True)
-        m.tracePath({player_agent: path}, delay=100)  
+        m = maze(size, size)
+        m.CreateMaze(goal[0], goal[1], loopPercent=100)
+        
+        start_time = time.perf_counter()
+        path, visited_nodes, path_cost, efficiency = aStar(m, start, goal)
+        end_time = time.perf_counter()
 
+        time_taken = end_time - start_time
+        visited_nodes_count = len(visited_nodes)
+        
+        print(f"\nMaze {i + 1}:")
+        print(f"- Start Position: {start}")
+        print(f"- Goal Position: {goal}")
+        print(f"- Time Taken: {time_taken:.4f} seconds")
+        print(f"- Total Nodes Visited: {visited_nodes_count}")
+        print(f"- Path Cost: {path_cost+1}")
+        print(f"- Optimal Path: {path}")
+        print(f"- Efficiency: {efficiency:.2%}")
+
+        player_agent = agent(m, x=start[0], y=start[1], color=COLOR.red, filled=True, footprints=True, shape="arrow")
+        m.tracePath({player_agent: path}, delay=20)          
+        
         m.run()
 
 def main():
